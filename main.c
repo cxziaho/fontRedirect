@@ -1,5 +1,5 @@
 /*
- * fontRedirect kernel plugin by cxziaho
+ * fontRedirect plugin by cxziaho
  * Thanks to Rinnegatamante, Xerpi and devnoname120 for helping me in #henkaku
  *
  * MIT License
@@ -40,7 +40,7 @@
 
 #define BUILTIN_FONTS 17
 
-#define FONT_DIR "ur0:"
+#define FONT_DIR "ux0:data/font/"
 #define FONT_NAME "font.otf"
 
 // Check path exists
@@ -65,11 +65,9 @@ static int pvf_done_id;
 static int pvf_path_injection;
 static int pvf_font_injection[BUILTIN_FONTS];
 
-ScePvfLibId scePvfNewLibHook(ScePvfInitRec *initParam, ScePvfError *errorCode) {
-	// Prevent injecting data more than once
-	if (pvf_path_injection != -1) goto DONE;
-	
+ScePvfLibId scePvfNewLibHook(ScePvfInitRec *initParam, ScePvfError *errorCode) {\
 	int ret;
+	ScePvfLibId id;
 	// Load module info about SceLibPvf
 	tai_module_info_t info;
 	info.size = sizeof(info);
@@ -82,7 +80,10 @@ ScePvfLibId scePvfNewLibHook(ScePvfInitRec *initParam, ScePvfError *errorCode) {
 	for (int i = 0; i < BUILTIN_FONTS; i++)
 		pvf_font_injection[i] = taiInjectData(info.modid, 0, 0xE8A0+(0xD8*i), FONT_NAME, sizeof(FONT_NAME));
 DONE:
-	return TAI_CONTINUE(ScePvfLibId, pvf_start_ref, initParam, errorCode);
+	id = TAI_CONTINUE(ScePvfLibId, pvf_start_ref, initParam, errorCode);
+	// Release hooks
+	taiHookRelease(pvf_start_id, pvf_start_ref);
+	return id;
 }
 
 ScePvfError scePvfDoneLibHook(ScePvfLibId libID) {
@@ -118,7 +119,6 @@ int hook_sysmod_unload(SceSysmoduleInternalModuleId id) {
 	// Check if loaded sysmodule is SCE_SYSMODULE_INTERNAL_PAF
 	if (ret >= 0 && id == SCE_SYSMODULE_INTERNAL_PAF) {
 		// Release hooks in ScePaf
-		taiHookRelease(pvf_start_id, pvf_start_ref);
 		taiHookRelease(pvf_done_id, pvf_done_ref);
 	}
 	return ret;
